@@ -23,7 +23,7 @@ background_image: background.png
 ```
 The input file must contain two columns, 'NAME' and 'HOURS' and be separate by commas.
 
-Run the code on the terminal or in the IDE. 
+Run the code in the terminal or in the IDE. 
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
