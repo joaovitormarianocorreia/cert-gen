@@ -1,75 +1,108 @@
 # Imports
 import os
+from re import T
 import pandas as pd
 import yaml
 from datetime import datetime
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
+from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4, landscape
-
-fields = {'Nome do Evento'}
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import Paragraph
 
 def readYAML(file_path):
     with open(file_path, "r") as f:
         return yaml.safe_load(f)
 
-# Convert date format to portuguese date
 def date2Text(date):
     date = date.split('/')
     month = {
         '01': 'Janeiro',
         '02': 'Fevereiro',
         '03': 'Março',
-        '04': 'Abril', 
+        '04': 'Abril',
         '05': 'Maio',
         '06': 'Junho',
-        '07': 'Julho', 
-        '08': 'Agosto', 
+        '07': 'Julho',
+        '08': 'Agosto',
         '09': 'Setembro',
-        '10': 'Outubro', 
+        '10': 'Outubro',
         '11': 'Novembro',
         '12': 'Dezembro'
     }.get(date[1])
     return (date[0] + " de " + month + " de " + date[2])
 
 
-# Generate certificates
+def createPDF(filename):
+    directory = os.path.join(os.getcwd(), 'Certificados')
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    return canvas.Canvas(os.path.join(directory, filename), pagesize=landscape(A4))
+
+
+def drawBackground(canvas, background):
+    cW, cH = canvas._pagesize
+    canvas.drawInlineImage(background, 0, 0, width=cW, height=cH)
+
+
+def drawParagraph(canvas, text, margin, x, y, style):
+    cW, cH = canvas._pagesize
+
+    message = Paragraph(text, style)
+    message.wrapOn(canvas, cW - margin, cH)
+    message.drawOn(canvas, x, y)
+
+
+def drawLocalDate(canvas):
+    cW, cH = canvas._pagesize
+    canvas.setFillColor('white')
+    canvas.setFont('Helvetica', 14)
+    canvas.drawCentredString(
+        cW/2, cH*0.39, f'Bauru, {date2Text(datetime.now().strftime("%d/%m/%Y"))}')
+
+
 def certGen(event_name, df, background, date):
 
-    for index, row in df.iterrows():
-        name = row['NAME']
-        hours = row['HOURS']
-        filename = os.path.join(str(name) + '.pdf')
-        c = canvas.Canvas(filename, pagesize = landscape(A4))
-        c.setTitle(str(name))
-        cW, cH = c._pagesize
-        c.drawInlineImage(background, 0, 0, width = cW, height = cH)
-        c.setFont('Helvetica', 40)
-        i = "CERTIFICADO"
-        c.drawCentredString(400, 440, i)
-        dec = ['Declaramos para os devidos fins que',
-                str(name),
-                'participou do evento',
-                '"' + str(event_name) + '"',
-                'no dia ' + date + ' cumprindo carga horária de ' + str(hours) + ' horas.',
-                ' ',
-                'Bauru, ' + date2Text(datetime.now().strftime('%d/%m/%Y'))]
-        y = 380
-        for i in dec:
-            c.setFont('Helvetica', 20)
-            c.drawCentredString(400, y, i)
-            y -= 30
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name='centered', alignment=TA_CENTER,
+               fontSize=20, textColor='white', leading=24))
 
-        #fecha arquivo pdf e o salva
+    for _index, row in df.iterrows():
+        name = row['NAME'].title()
+        ra = row['RA']
+        hours = row['HOURS']
+
+        # Create PDF
+        filename = os.path.join(f'{ra}-{name}.pdf')
+        c = createPDF(filename)
+        c.setTitle(name)
+
+        _cW, cH = c._pagesize
+        drawBackground(c, background)
+
+        text = f'''Declaramos para os devidos fins que \\n <strong><font size="24">{name}</font></strong> 
+                \\n\\n Participou do evento <strong>\"{event_name}\"</strong> \\n Realizado no dia 
+                <strong>{date2Text(date)}</strong> cumprindo carga horária de 
+                <strong>{hours}</strong> horas.'''.replace('\\n', '<br/>')
+
+        drawParagraph(c, text, 100, 50, cH*0.45, styles['centered'])
+        drawLocalDate(c)
+
         c.showPage()
         c.save()
+        print(f'Certificado gerado para "{name}"')
+
 
 if __name__ == '__main__':
     config_file = readYAML('config.yaml')
+    
     event_name = config_file['event_name']
     input_name = config_file['input_name']
     date = config_file['date']
-    background_name = config_file['background_image']
-    df = pd.read_csv(input_name, sep=',')
-    background = str(background_name)
+    background = config_file['background_image']
+    
+    df = pd.read_csv(input_name, sep=';')
+    
     certGen(event_name, df, background, date)
