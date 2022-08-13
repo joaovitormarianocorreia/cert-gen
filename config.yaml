@@ -1,4 +1,11 @@
-event_name: Festa Junina 2022 - Quadrilha
-input_name: input.csv
+event_name: Festa Junina 2022
+input_name: lista_festa_junina.csv
+output_directory_name: certificados
 date: 24/06/2022
 background_image: background.png
+attributes: [name, hours, activity_group]
+certificate_text: |
+  Declaramos para os devidos fins que 
+  <strong><font size="24">{name}</font></strong>
+  Participou do evento <strong>"{event_name}"</strong> contribuindo no grupo <strong>"{activity_group}"</strong>
+  Realizado no dia <strong>{date}</strong> cumprindo carga horária de <strong>{hours}</strong> horas.
